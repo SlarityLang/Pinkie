@@ -1,4 +1,5 @@
 import { InstrNotFoundError, LabelNotFoundError } from "./Errors";
+import { debug, warn } from "./Logger";
 import { initHeap, Memory } from "./Memory";
 import { callNativeFunction } from "./Natives";
 
@@ -133,8 +134,8 @@ export function runProgram(prog: Program): void {
   let progs = prog.exec.code;
   let labels = prog.exec.labels;
   let eip = 0;
-
   function internalJMP(instr: InstrStatement) {
+    debug("Jump to " + instr.arg1);
     let lbs = labels.get(instr.arg1);
     if (lbs === undefined) {
       throw new LabelNotFoundError(instr);
@@ -171,6 +172,7 @@ export function runProgram(prog: Program): void {
         eip++;
         break;
       case InstrSet.NOP:
+        warn("Null operation detected, which is not recommended");
         eip++;
         break;
       case InstrSet.ADD:
@@ -244,6 +246,7 @@ export function runProgram(prog: Program): void {
         // RET: return to previous call = POP EIP
         loadStack(prog);
         eip = prog.memory.stack.pop() || -1;
+        debug("Return to " + eip);
         break;
       case InstrSet.CALL:
         prog.callStack.push(curr.arg1);

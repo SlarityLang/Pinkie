@@ -3,17 +3,19 @@
     "@types/node": "^17.0.21",
     "typescript": "^4.6.2"
   },
+  "name": "slarity-interpreter-pinkie",
   "version": "1.0.0",
   "description": "Default interpreter for Slarity ASM code.",
   "license": "GPL-3.0-or-later",
   "private": true,
   "bin": {
-    "slarity-intepreter-pinkie": "./dist/Pinkie.js"
+    "pinkie": "./dist/Pinkie.js"
   },
   "scripts": {
     "i": "yarn global add file:$HOME/Pinkie"
   },
   "dependencies": {
+    "chalk": "4",
     "commander": "^9.1.0"
   }
 }
