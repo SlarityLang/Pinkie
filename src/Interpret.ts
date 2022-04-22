@@ -1,6 +1,10 @@
-import { InstrNotFoundError, LabelNotFoundError } from "./Errors";
+import {
+  AccessUnallocatedHeapError,
+  InstrNotFoundError,
+  LabelNotFoundError,
+} from "./Errors";
 import { debug, warn } from "./Logger";
-import { initHeap, Memory } from "./Memory";
+import { initHeap, isSafeHeap, Memory } from "./Memory";
 import { callNativeFunction } from "./Natives";
 
 export const InstrSet = {
@@ -23,6 +27,7 @@ export const InstrSet = {
   POP: "POP",
   POP0: "POP0",
   JE: "JE",
+  JNE: "JNE",
   JB: "JB",
   JBE: "JBE",
   JA: "JA",
@@ -30,6 +35,8 @@ export const InstrSet = {
   INT: "INT", // Call native functions
   NOP: "NOP",
   END: "END",
+  OUT: "OUT", // OUT <addr> <value>
+  IN: "IN", // IN <value> <addr>
 };
 
 export interface InstrStatement {
@@ -120,8 +127,8 @@ function loadStack(prog: Program): void {
   }
   let callFun = prog.callStack.pop();
   if (callFun) {
-    callFun = callFun.slice(5); // 'func_' prefix
-    let ret = `$${callFun}_return`;
+    callFun = callFun.slice(1); // 'F' prefix
+    let ret = `*${callFun}`;
     o[ret] = prog.memory.varMap[ret];
   }
   prog.memory.varMap = {};
@@ -130,7 +137,7 @@ function loadStack(prog: Program): void {
   }
 }
 
-export function runProgram(prog: Program): void {
+export function runProgram(prog: Program, opts: any): void {
   let progs = prog.exec.code;
   let labels = prog.exec.labels;
   let eip = 0;
@@ -277,6 +284,13 @@ export function runProgram(prog: Program): void {
           eip++;
         }
         break;
+      case InstrSet.JNE:
+        if (prog.memory.cmpResult !== 0) {
+          internalJMP(curr);
+        } else {
+          eip++;
+        }
+        break;
       case InstrSet.JAE:
         if (prog.memory.cmpResult >= 0) {
           internalJMP(curr);
@@ -305,6 +319,22 @@ export function runProgram(prog: Program): void {
           eip++;
         }
         break;
+      case InstrSet.OUT: {
+        let addr = prog.memory.varMap[curr.arg1];
+        if (!opts.unsafeHeap) {
+          if (isSafeHeap(prog.memory, addr)) {
+            throw new AccessUnallocatedHeapError(addr);
+          }
+        }
+        prog.memory.heap[addr] = prog.memory.varMap[curr.arg2];
+        eip++;
+        break;
+      }
+      case InstrSet.IN:
+        prog.memory.varMap[curr.arg1] =
+          prog.memory.heap[prog.memory.varMap[curr.arg2]] || 0;
+        eip++;
+        break;
       case InstrSet.CMP: {
         let v1 = prog.memory.varMap[curr.arg1] || 0;
         let v2;
@@ -325,6 +355,9 @@ export function runProgram(prog: Program): void {
         eip++;
         break;
       }
+      default:
+        warn(`Unsupported instr: ${curr.instr}`);
+        eip++;
     }
   }
 }

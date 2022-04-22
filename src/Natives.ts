@@ -2,6 +2,7 @@ import path from "path";
 import { INTNotFoundError } from "./Errors";
 import { Program } from "./Interpret";
 import { debug, info, warn } from "./Logger";
+import { free, malloc } from "./Memory";
 const NATIVE_FUNCTIONS: Map<string, NativeFunction> = new Map();
 
 export function callNativeFunction(intName: string, prog: Program): void {
@@ -16,7 +17,7 @@ export function callNativeFunction(intName: string, prog: Program): void {
 
 type NativeFunction = (prog: Program) => void;
 export function addNativeFunction(name: string, nf: NativeFunction): void {
-  NATIVE_FUNCTIONS.set("native_" + name, nf);
+  NATIVE_FUNCTIONS.set("N" + name, nf);
 }
 export function initNativeFunctions(files: string[]): void {
   for (let f of files) {
@@ -40,9 +41,18 @@ export function initNativeFunctions(files: string[]): void {
   }
   debug("Loading builtin libraries");
   addNativeFunction("puts", (p) => {
-    info(String(p.memory.varMap["$puts_arg1"]));
+    info(String(p.memory.varMap["#puts_1"]));
   });
   addNativeFunction("exit", (p) => {
-    process.exit(parseInt(String(p.memory.varMap["$exit_arg1"])) || 0);
+    process.exit(parseInt(String(p.memory.varMap["#exit_1"])) || 0);
+  });
+  addNativeFunction("malloc", (p) => {
+    p.memory.varMap["*malloc"] = malloc(
+      p.memory,
+      p.memory.varMap["#malloc_1"] || 0
+    );
+  });
+  addNativeFunction("free", (p) => {
+    free(p.memory, p.memory.varMap["#free_1"] || 0);
   });
 }

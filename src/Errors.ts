@@ -9,6 +9,13 @@ export class OutOfMemoryError extends MemoryError {
     this.requestBytes = req;
   }
 }
+export class AccessUnallocatedHeapError extends MemoryError {
+  address: number;
+  constructor(addr: number) {
+    super(`Trying to access an unallocated address in heap: ${addr}`);
+    this.address = addr;
+  }
+}
 export class ProgramError extends RuntimeError {}
 export class InstrNotFoundError extends ProgramError {
   eip: number;

@@ -7,11 +7,12 @@ import { initNativeFunctions } from "./Natives";
 const cmd = new Command();
 cmd
   .description("Run compiled slari program (.slari)")
-  .option("-h, --heap-size <bytes>", "Heap size in bytes", "1048576")
-  .option("-e, --entry <entry>", "Entry point", "func_main")
-  .option("-l, --libs <natives>", "Native script files", "")
-  .option("-v, --verbose", "Enable extra console outputs")
-  .argument("<source>", "The source Slari instr code")
+  .option("-h, --heap-size <bytes>", "Heap size in bytes.", "1048576")
+  .option("-e, --entry <entry>", "Entry point.", "Fmain")
+  .option("-l, --libs <natives...>", "Native script files.")
+  .option("-v, --verbose", "Enable extra console outputs.")
+  .option("-U, --unsafe-heap", "Do not check access to heap.")
+  .argument("<source>", "The source Slari instr code.")
   .action((source, opts) => {
     setDebug(!!opts.verbose);
     debug("Loading program " + source);
@@ -19,8 +20,11 @@ cmd
       if (e) {
         error("Cannot read input file: " + e);
       } else {
-        debug("Initializing native libraries: " + opts.libs);
-        initNativeFunctions(String(opts.libs || "").split(","));
+        if (!opts.libs) {
+          opts.libs = [];
+        }
+        debug("Initializing native libraries: " + opts.libs.join(","));
+        initNativeFunctions(opts.libs);
         debug("Native libraries loaded");
         debug("Loading program " + source);
         let prog = loadProgram(
@@ -30,7 +34,7 @@ cmd
         );
         debug("Start running program");
         try {
-          runProgram(prog);
+          runProgram(prog, opts);
         } catch (e) {
           error("Error during running program: " + e);
         }
